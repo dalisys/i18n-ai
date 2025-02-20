@@ -349,7 +349,7 @@ The tool will automatically warn you about deprecated models and suggest alterna
 
 ## Contributing
 
-1. Fork the repository
+1. Fork the repository [https://github.com/dalisys/i18n-ai.git](https://github.com/dalisys/i18n-ai.git)
 2. Create your feature branch
 3. Run tests: `npm test`
 4. Submit a pull request
