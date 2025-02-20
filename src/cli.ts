@@ -52,7 +52,7 @@ Configuration File (translator.config.json):
     }],
     "provider": "openai",             // AI provider to use
     "model": "gpt-4",                 // Model to use (optional)
-    "chunkSize": 10000,              // Number of keys per chunk (default: 10000)
+    "chunkSize": 50,                 // Number of keys per chunk (default: 50)
     "description": "My app context",   // Project context for better translations
     "tone": "formal",                 // Desired tone (formal/casual/technical)
     "translateAllAtOnce": false,      // Translate entire file at once

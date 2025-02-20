@@ -74,6 +74,7 @@ export interface TranslationConfig {
   description?: string;
   tone?: string;
   translateAllAtOnce?: boolean;
+  ignoreKeys?: string[];
 }
 
 export interface TranslateFilesOptions {
