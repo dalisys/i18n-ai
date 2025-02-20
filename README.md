@@ -107,12 +107,13 @@ npx i18n-ai translate
 
 | Option               | Description                                            | Default |
 | -------------------- | ------------------------------------------------------ | ------- |
-| `chunkSize`          | Number of keys per translation chunk                   | 10000   |
+| `chunkSize`          | Number of keys per translation chunk                   | 50      |
 | `concurrency`        | Number of concurrent translation requests              | 3       |
 | `overwrite`          | Whether to overwrite existing translations             | false   |
 | `description`        | Project context for better translations                | -       |
 | `tone`               | Desired tone (e.g., "formal", "casual", "technical")   | -       |
 | `translateAllAtOnce` | Translate entire file in one request instead of chunks | false   |
+| `ignoreKeys`         | Array of keys to ignore during translation             | -       |
 
 ### Translation Context and Tone
 
@@ -131,12 +132,69 @@ Choose between chunked translation or all-at-once:
 
 ```json
 {
-  "chunkSize": 10000, // Default chunked translation
+  "chunkSize": 100, // Larger chunks for fewer API calls
   "translateAllAtOnce": true // Optional: translate everything at once
 }
 ```
 
 Note: All-at-once translation might hit token limits for large files.
+
+### Ignoring Keys
+
+You can exclude specific keys and their nested children from translation using the `ignoreKeys` option:
+
+```json
+{
+  "ignoreKeys": [
+    "app.constants", // Ignores all application constants
+    "validation.regex", // Ignores regex patterns
+    "errors.codes" // Ignores error codes that should stay the same
+  ]
+}
+```
+
+When a key is ignored:
+
+- If it exists in the target file, that translation will be kept
+- If it doesn't exist in the target file, the source value will be used
+- All child keys of an ignored key will also be ignored
+- The skipped keys count will include ignored keys
+
+### Complete Configuration Example
+
+Here's a comprehensive example showing all available options:
+
+```json
+{
+  "source": {
+    "path": "./locales/en.json",
+    "code": "en"
+  },
+  "targets": [
+    {
+      "path": "./locales/de.json",
+      "code": "de"
+    },
+    {
+      "path": "./locales/fr.json",
+      "code": "fr"
+    }
+  ],
+  "provider": "openai",
+  "model": "gpt-4-turbo-preview",
+  "chunkSize": 50,
+  "concurrency": 3,
+  "overwrite": false,
+  "description": "A business dashboard application with professional terminology",
+  "tone": "formal",
+  "translateAllAtOnce": false,
+  "ignoreKeys": [
+    "app.constants.apiEndpoints",
+    "app.constants.httpStatus",
+    "validation.regex.email"
+  ]
+}
+```
 
 ## Usage
 
@@ -195,7 +253,7 @@ await translateFiles({
 | `targets[].code` | Target language code                                                    | Required         |
 | `provider`       | AI provider to use (`openai`, `anthropic`, `gemini`, `deepseek`, `xai`) | `openai`         |
 | `model`          | Model to use for the selected provider (see below)                      | Provider default |
-| `chunkSize`      | Maximum characters per translation request                              | 1000             |
+| `chunkSize`      | Maximum characters per translation request                              | 50               |
 | `concurrency`    | Number of concurrent translation requests                               | 3                |
 | `overwrite`      | Whether to overwrite existing translations (see below)                  | false            |
 
