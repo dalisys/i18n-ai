@@ -1,6 +1,6 @@
 {
   "name": "i18n-ai",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI-powered translation tool for i18n JSON files",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
