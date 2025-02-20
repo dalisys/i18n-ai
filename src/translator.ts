@@ -159,6 +159,8 @@ async function translateFile(
           const translatedLine = translatedLines[index];
           const value = translatedLine
             .substring(translatedLine.indexOf(":") + 1)
+            .trim()
+            .replace(/^["']|["'],?$/g, "")
             .trim();
           translatedChunks[key] = value;
           stats.newKeys++;
@@ -198,6 +200,8 @@ async function translateFile(
             const translatedLine = translatedLines[j];
             const value = translatedLine
               .substring(translatedLine.indexOf(":") + 1)
+              .trim()
+              .replace(/^["']|["'],?$/g, "")
               .trim();
             translatedChunks[key] = value;
             stats.newKeys++;
