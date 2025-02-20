@@ -1,0 +1,19 @@
+{
+  "source": {
+    "path": "./locales/en.json",
+    "code": "en"
+  },
+  "targets": [
+    {
+      "path": "./locales/fr.json",
+      "code": "fr"
+    }
+  ],
+  "provider": "gemini",
+  "chunkSize": 100000,
+  "concurrency": 3,
+  "overwrite": false,
+  "description": "My app context",
+  "tone": "formal",
+  "translateAllAtOnce": false
+}

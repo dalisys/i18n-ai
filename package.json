@@ -1,0 +1,41 @@
+{
+  "name": "i18n-ai",
+  "version": "1.0.0",
+  "description": "AI-powered translation tool for i18n JSON files",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "i18n",
+    "translation",
+    "ai",
+    "internationalization",
+    "localization"
+  ],
+  "author": "Mohamed-Ali Masmoudi",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1"
+  },
+  "bin": {
+    "i18n-ai": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}
