@@ -26,61 +26,52 @@ function chunkObject(
   // Helper to get the top-level key
   const getTopLevelKey = (key: string): string => key.split(".")[0];
 
+  const pushCurrentChunk = () => {
+    if (currentChunk.length > 0) {
+      chunks.push([...currentChunk]);
+      currentChunk = [];
+    }
+  };
+
   for (let i = 0; i < entries.length; i++) {
     const [key, value] = entries[i];
     const topLevelKey = getTopLevelKey(key);
 
-    // If we're starting a new chunk or continuing with the same top-level object
-    if (currentChunk.length === 0 || topLevelKey === currentPrefix) {
-      currentChunk.push({
-        key,
-        value: typeof value === "string" ? value : JSON.stringify(value),
-      });
+    // Start new chunk if:
+    // 1. Current chunk is at max size
+    // 2. We're switching to a new top-level key and current chunk is substantial
+    if (
+      currentChunk.length >= maxKeysPerChunk ||
+      (topLevelKey !== currentPrefix &&
+        currentChunk.length >= Math.min(maxKeysPerChunk * 0.8, 10))
+    ) {
+      pushCurrentChunk();
       currentPrefix = topLevelKey;
-    } else if (currentChunk.length >= maxKeysPerChunk) {
-      // Current chunk is full, start a new one
-      chunks.push(currentChunk);
-      currentChunk = [
-        {
-          key,
-          value: typeof value === "string" ? value : JSON.stringify(value),
-        },
-      ];
-      currentPrefix = topLevelKey;
-    } else {
-      // Check if adding this key would split an object
-      const nextKey =
-        i + 1 < entries.length ? getTopLevelKey(entries[i + 1][0]) : null;
-      if (
-        topLevelKey !== currentPrefix &&
-        (nextKey === topLevelKey || currentChunk.length >= maxKeysPerChunk)
-      ) {
-        // Start a new chunk to keep the object together
-        chunks.push(currentChunk);
-        currentChunk = [
-          {
-            key,
-            value: typeof value === "string" ? value : JSON.stringify(value),
-          },
-        ];
-        currentPrefix = topLevelKey;
-      } else {
-        // Add to current chunk
-        currentChunk.push({
-          key,
-          value: typeof value === "string" ? value : JSON.stringify(value),
-        });
-        currentPrefix = topLevelKey;
-      }
     }
+
+    // If starting a new chunk, set the prefix
+    if (currentChunk.length === 0) {
+      currentPrefix = topLevelKey;
+    }
+
+    currentChunk.push({
+      key,
+      value: typeof value === "string" ? value : JSON.stringify(value),
+    });
   }
 
-  // Add the last chunk
-  if (currentChunk.length > 0) {
-    chunks.push(currentChunk);
-  }
+  // Add the last chunk if not empty
+  pushCurrentChunk();
 
   return chunks;
+}
+
+function shouldIgnoreKey(key: string, ignoreKeys: string[] = []): boolean {
+  return ignoreKeys.some(
+    (ignoreKey) =>
+      key === ignoreKey || // Exact match
+      key.startsWith(ignoreKey + ".") // Child of ignored key
+  );
 }
 
 async function translateFile(
@@ -118,8 +109,22 @@ async function translateFile(
   // Identify keys that need translation
   const keysToTranslate: Record<string, string> = {};
   for (const [key, value] of Object.entries(flattenedSource)) {
+    // Skip if key should be ignored
+    if (shouldIgnoreKey(key, config.ignoreKeys)) {
+      stats.skippedKeys++;
+      // If the key exists in existing translations, keep it
+      if (existingTranslations[key]) {
+        keysToTranslate[key] = existingTranslations[key];
+      } else {
+        // If no existing translation, keep the source value
+        keysToTranslate[key] = value;
+      }
+      continue;
+    }
+
     if (!config.overwrite && existingTranslations[key]) {
       stats.skippedKeys++;
+      keysToTranslate[key] = existingTranslations[key];
       continue;
     }
     keysToTranslate[key] = value;

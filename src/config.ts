@@ -9,7 +9,7 @@ dotenvConfig();
 
 const DEFAULT_CONFIG: Partial<TranslationConfig> = {
   provider: "openai",
-  chunkSize: 10000,
+  chunkSize: 50,
   concurrency: 3,
   overwrite: false,
 };
