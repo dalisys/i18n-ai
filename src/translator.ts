@@ -74,6 +74,150 @@ function shouldIgnoreKey(key: string, ignoreKeys: string[] = []): boolean {
   );
 }
 
+function formatTranslationInput(entries: [string, string][]): string {
+  // Convert entries to a JSON object
+  const jsonObject = entries.reduce((obj, [key, value]) => {
+    obj[key] = value;
+    return obj;
+  }, {} as Record<string, string>);
+
+  return JSON.stringify(jsonObject, null, 2);
+}
+
+function parseTranslatedText(
+  text: string,
+  originalKeys: string[]
+): Record<string, string> {
+  try {
+    // Try to parse the response as JSON
+    const parsed = JSON.parse(text.trim());
+    const result: Record<string, string> = {};
+
+    // Validate and extract translations
+    originalKeys.forEach((key) => {
+      if (typeof parsed[key] === "string") {
+        const value = parsed[key].trim();
+        if (value && value.length > 0) {
+          result[key] = value;
+        } else {
+          console.warn(`Empty translation found for key: ${key}`);
+        }
+      } else {
+        console.warn(`Missing or invalid translation for key: ${key}`);
+      }
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Failed to parse translation response as JSON:", error);
+    // Fallback to line-by-line parsing if JSON parsing fails
+    const result: Record<string, string> = {};
+    const lines = text.trim().split("\n");
+
+    lines.forEach((line, index) => {
+      const originalKey = originalKeys[index];
+      if (!originalKey) return;
+
+      try {
+        const colonIndex = line.indexOf(":");
+        if (colonIndex === -1) {
+          console.warn(`No separator found in line: ${line}`);
+          return;
+        }
+
+        const value = line
+          .substring(colonIndex + 1)
+          .trim()
+          .replace(/^["']|["']$/g, "")
+          .trim();
+
+        if (value && value.length > 0) {
+          result[originalKey] = value;
+        } else {
+          console.warn(`Empty translation found for key: ${originalKey}`);
+        }
+      } catch (error) {
+        console.error(`Error parsing line: ${line}`, error);
+      }
+    });
+
+    return result;
+  }
+}
+
+interface BatchConfig {
+  maxConcurrent: number;
+  delayBetweenBatches: number;
+  retryAttempts: number;
+}
+
+interface BatchResponse<T> {
+  success: boolean;
+  result?: T;
+  error?: Error;
+  retryCount?: number;
+}
+
+class BatchProcessor {
+  private config: BatchConfig;
+
+  constructor(config: Partial<BatchConfig> = {}) {
+    this.config = {
+      maxConcurrent: 3,
+      delayBetweenBatches: 1000,
+      retryAttempts: 3,
+      ...config,
+    };
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async processWithRetry<T>(
+    processor: () => Promise<T>,
+    attempts: number = 0
+  ): Promise<BatchResponse<T>> {
+    try {
+      const result = await processor();
+      return { success: true, result };
+    } catch (error) {
+      if (attempts < this.config.retryAttempts) {
+        await this.delay(Math.pow(2, attempts) * 1000); // Exponential backoff
+        return this.processWithRetry(processor, attempts + 1);
+      }
+      return {
+        success: false,
+        error: error as Error,
+        retryCount: attempts,
+      };
+    }
+  }
+
+  async processBatch<T, I>(
+    items: I[],
+    processor: (item: I) => Promise<T>
+  ): Promise<BatchResponse<T>[]> {
+    const results: BatchResponse<T>[] = [];
+
+    for (let i = 0; i < items.length; i += this.config.maxConcurrent) {
+      const batch = items.slice(i, i + this.config.maxConcurrent);
+      const batchPromises = batch.map((item) =>
+        this.processWithRetry(() => processor(item))
+      );
+
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+
+      if (i + this.config.maxConcurrent < items.length) {
+        await this.delay(this.config.delayBetweenBatches);
+      }
+    }
+
+    return results;
+  }
+}
+
 async function translateFile(
   sourceFile: string,
   targetFile: string,
@@ -144,29 +288,32 @@ async function translateFile(
   );
 
   const translatedChunks: Record<string, any> = {};
+  const batchProcessor = new BatchProcessor({
+    maxConcurrent: 3,
+    delayBetweenBatches: 2000,
+    retryAttempts: 3,
+  });
 
   if (config.translateAllAtOnce) {
-    // Translate entire file at once
     try {
       console.log(
         `Translating ${
           Object.keys(keysToTranslate).length
         } keys to ${targetLang} all at once...`
       );
-      const allText = Object.entries(keysToTranslate)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join("\n");
-      const translatedText = await provider.translate(allText, targetLang);
+
+      const entries = Object.entries(keysToTranslate);
+      const formattedText = formatTranslationInput(entries);
+      const translatedText = await provider.translate(
+        formattedText,
+        targetLang
+      );
 
       try {
-        const translatedLines = translatedText.split("\n");
-        Object.keys(keysToTranslate).forEach((key, index) => {
-          const translatedLine = translatedLines[index];
-          const value = translatedLine
-            .substring(translatedLine.indexOf(":") + 1)
-            .trim()
-            .replace(/^["']|["'],?$/g, "")
-            .trim();
+        const keys = Object.keys(keysToTranslate);
+        const parsed = parseTranslatedText(translatedText, keys);
+
+        Object.entries(parsed).forEach(([key, value]) => {
           translatedChunks[key] = value;
           stats.newKeys++;
         });
@@ -189,35 +336,75 @@ async function translateFile(
     );
     console.log(`Split into ${chunks.length} chunks`);
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      try {
-        console.log(`Translating chunk ${i + 1}/${chunks.length}...`);
-        const chunkText = chunk
-          .map((item) => `${item.key}: ${item.value}`)
-          .join("\n");
-        const translatedText = await provider.translate(chunkText, targetLang);
+    if (config.provider === "anthropic") {
+      // Use batch processing for Anthropic
+      console.log("Using batch processing for Anthropic");
+      const results = await batchProcessor.processBatch(
+        chunks,
+        async (chunk) => {
+          const entries = chunk.map(
+            (item) => [item.key, item.value] as [string, string]
+          );
+          const formattedText = formatTranslationInput(entries);
+          const translatedText = await provider.translate(
+            formattedText,
+            targetLang
+          );
 
-        try {
-          const translatedLines = translatedText.split("\n");
-          for (let j = 0; j < chunk.length; j++) {
-            const key = chunk[j].key;
-            const translatedLine = translatedLines[j];
-            const value = translatedLine
-              .substring(translatedLine.indexOf(":") + 1)
-              .trim()
-              .replace(/^["']|["'],?$/g, "")
-              .trim();
-            translatedChunks[key] = value;
-            stats.newKeys++;
+          const keys = chunk.map((item) => item.key);
+          return { translatedText, keys };
+        }
+      );
+
+      // Process results
+      results.forEach((result, index) => {
+        if (result.success && result.result) {
+          const { translatedText, keys } = result.result;
+          try {
+            const parsed = parseTranslatedText(translatedText, keys);
+            Object.entries(parsed).forEach(([key, value]) => {
+              translatedChunks[key] = value;
+              stats.newKeys++;
+            });
+          } catch (error) {
+            console.error(
+              `Error parsing translation for chunk ${index + 1}:`,
+              error
+            );
+            stats.errors++;
           }
-        } catch (error) {
-          console.error(`Error parsing translation for chunk ${i + 1}:`, error);
+        } else {
+          console.error(
+            `Failed to translate chunk ${index + 1}:`,
+            result.error
+          );
           stats.errors++;
         }
-      } catch (error) {
-        console.error(`Error translating chunk ${i + 1}:`, error);
-        stats.errors++;
+      });
+    } else {
+      // Sequential processing for other providers
+      for (const chunk of chunks) {
+        try {
+          const entries = chunk.map(
+            (item) => [item.key, item.value] as [string, string]
+          );
+          const formattedText = formatTranslationInput(entries);
+          const translatedText = await provider.translate(
+            formattedText,
+            targetLang
+          );
+
+          const keys = chunk.map((item) => item.key);
+          const parsed = parseTranslatedText(translatedText, keys);
+
+          Object.entries(parsed).forEach(([key, value]) => {
+            translatedChunks[key] = value;
+            stats.newKeys++;
+          });
+        } catch (error) {
+          console.error("Error translating chunk:", error);
+          stats.errors++;
+        }
       }
     }
   }
