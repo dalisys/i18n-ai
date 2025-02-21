@@ -46,6 +46,8 @@ export class OpenAIProvider implements TranslationProvider {
               content: text,
             },
           ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
         },
         {
           headers: {
