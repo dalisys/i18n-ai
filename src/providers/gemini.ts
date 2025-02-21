@@ -34,7 +34,7 @@ export class GeminiProvider implements TranslationProvider {
       prompt += text;
 
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1/models/${this.model}:generateContent?key=${this.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`,
         {
           contents: [
             {
@@ -51,7 +51,31 @@ export class GeminiProvider implements TranslationProvider {
         }
       );
 
-      return response.data.candidates[0].content.parts[0].text.trim();
+      console.log("Gemini response", response.data.candidates[0].content);
+
+      // Extract the JSON response
+      let translatedContent = response.data.candidates[0].content.parts[0].text;
+
+      // Remove markdown code block if present
+      translatedContent = translatedContent
+        .replace(/^```json\n/, "")
+        .replace(/\n```$/, "");
+
+      // Ensure it's valid JSON
+      try {
+        const parsed = JSON.parse(translatedContent);
+        // Remove extra quotes that might be in the values
+        const cleanedParsed = Object.fromEntries(
+          Object.entries(parsed).map(([key, value]) => [
+            key,
+            typeof value === "string" ? value.replace(/^"|"$/g, "") : value,
+          ])
+        );
+        return JSON.stringify(cleanedParsed, null, 2);
+      } catch (error) {
+        console.error("Failed to parse Gemini response as JSON:", error);
+        return translatedContent.trim();
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new Error(
