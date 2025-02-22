@@ -63,6 +63,26 @@ export interface ProviderConfig {
   model?: ProviderModel;
 }
 
+export interface ExportConfig {
+  /**
+   * Path where the CSV file will be saved
+   * @default './translations-export.csv'
+   */
+  outputPath?: string;
+
+  /**
+   * Character to use as CSV delimiter
+   * @default ','
+   */
+  delimiter?: string;
+
+  /**
+   * Include last modified date for each translation
+   * @default false
+   */
+  includeMetadata?: boolean;
+}
+
 export interface TranslationConfig {
   source: LanguageFile;
   targets: LanguageFile[];
@@ -75,6 +95,10 @@ export interface TranslationConfig {
   tone?: string;
   translateAllAtOnce?: boolean;
   ignoreKeys?: string[];
+  /**
+   * CSV export configuration
+   */
+  export?: ExportConfig;
 }
 
 export interface TranslateFilesOptions {

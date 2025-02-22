@@ -14,8 +14,11 @@ An AI-powered translation tool for i18n JSON files. This package helps you autom
   - [Configuration](#configuration)
     - [Basic Options](#basic-options)
     - [Advanced Options](#advanced-options)
+    - [Export Configuration](#export-configuration)
     - [Translation Context and Tone](#translation-context-and-tone)
     - [Chunk Size vs. All-at-Once](#chunk-size-vs-all-at-once)
+    - [Ignoring Keys](#ignoring-keys)
+    - [Complete Configuration Example](#complete-configuration-example)
   - [Usage](#usage)
     - [CLI Commands](#cli-commands)
     - [Programmatic Usage](#programmatic-usage)
@@ -47,6 +50,7 @@ An AI-powered translation tool for i18n JSON files. This package helps you autom
 - 🔓 Support for custom model names
 - 🎨 Customizable translation tone and context
 - ⚡ Option to translate entire files at once
+- 📊 Export translations to CSV for review and analysis
 
 ## Quick Start
 
@@ -114,6 +118,42 @@ npx i18n-ai translate
 | `tone`               | Desired tone (e.g., "formal", "casual", "technical")   | -       |
 | `translateAllAtOnce` | Translate entire file in one request instead of chunks | false   |
 | `ignoreKeys`         | Array of keys to ignore during translation             | -       |
+| `export`             | CSV export configuration (see below)                   | -       |
+
+### Export Configuration
+
+The `export` section in your config file allows you to set default options for CSV exports:
+
+| Option            | Description                                     | Default                   |
+| ----------------- | ----------------------------------------------- | ------------------------- |
+| `outputPath`      | Path where the CSV file will be saved           | ./translations-export.csv |
+| `delimiter`       | Character to use as CSV delimiter               | ,                         |
+| `includeMetadata` | Include last modified date for each translation | false                     |
+
+Example configuration with export options:
+
+```json
+{
+  "source": {
+    "path": "./locales/en.json",
+    "code": "en"
+  },
+  "targets": [
+    {
+      "path": "./locales/de.json",
+      "code": "de"
+    }
+  ],
+  "provider": "openai",
+  "export": {
+    "outputPath": "./exports/translations.csv",
+    "delimiter": ";",
+    "includeMetadata": true
+  }
+}
+```
+
+Note: CLI arguments (`--output`, `--delimiter`, `--metadata`) will override these config file settings.
 
 ### Translation Context and Tone
 
@@ -192,7 +232,12 @@ Here's a comprehensive example showing all available options:
     "app.constants.apiEndpoints",
     "app.constants.httpStatus",
     "validation.regex.email"
-  ]
+  ],
+  "export": {
+    "outputPath": "./exports/translations.csv",
+    "delimiter": ";",
+    "includeMetadata": true
+  }
 }
 ```
 
@@ -204,6 +249,22 @@ Translate using configuration file:
 
 ```bash
 npx i18n-ai translate
+```
+
+Export translations to CSV:
+
+```bash
+# Default export (creates translations-export.csv)
+npx i18n-ai export
+
+# Custom output path
+npx i18n-ai export --output ./exports/translations.csv
+
+# Use semicolon as delimiter
+npx i18n-ai export --delimiter ";"
+
+# Include metadata (last modified date)
+npx i18n-ai export --metadata
 ```
 
 Use a custom config file:
@@ -233,13 +294,37 @@ npx i18n-ai models --provider openai
 ### Programmatic Usage
 
 ```typescript
-import { translateFiles } from "i18n-ai";
+import { translateFiles, exportTranslationsToCSV } from "i18n-ai";
 
+// Translation
 await translateFiles({
   configPath: "./custom-config.json", // optional
   overwrite: false, // optional
 });
+
+// CSV Export
+await exportTranslationsToCSV(config, {
+  outputPath: "./exports/translations.csv", // optional, default: "./translations-export.csv"
+  delimiter: ",", // optional, default: ","
+  includeMetadata: false, // optional, default: false
+});
 ```
+
+The exported CSV will have the following structure:
+
+```csv
+Key,en,de,fr,Last Modified
+common.welcome,Welcome,Willkommen,Bienvenue,2024-03-21T10:30:00.000Z
+common.login,Log in,Anmelden,Se connecter,2024-03-21T10:30:00.000Z
+errors.required,This field is required,Dieses Feld ist erforderlich,Ce champ est obligatoire,2024-03-21T10:30:00.000Z
+```
+
+This format makes it easy to:
+
+- Review translations across all languages
+- Import into spreadsheet software for analysis
+- Share with translators or stakeholders for review
+- Track changes through metadata
 
 ## Configuration Options
 

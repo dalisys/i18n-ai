@@ -2,6 +2,8 @@
 
 import { Command } from "commander";
 import { translateFiles } from "./translator";
+import { exportTranslationsToCSV } from "./export";
+import { loadConfig } from "./config";
 import { SupportedProvider } from "./types";
 import {
   OPENAI_MODELS,
@@ -150,6 +152,47 @@ Examples:
       showModels("Gemini", GEMINI_MODELS);
       showModels("DeepSeek", DEEPSEEK_MODELS);
       showModels("XAI", XAI_MODELS);
+    }
+  });
+
+program
+  .command("export")
+  .description("Export translations to CSV format")
+  .option(
+    "-c, --config <path>",
+    "Path to config file (default: translator.config.json)"
+  )
+  .option(
+    "-o, --output <path>",
+    "Output path for CSV file (default: translations-export.csv)"
+  )
+  .option("-d, --delimiter <char>", "Delimiter to use in CSV (default: ,)")
+  .option(
+    "-m, --metadata",
+    "Include metadata columns (e.g., last modified date)"
+  )
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ i18n-ai export                           # Use default settings
+  $ i18n-ai export --output ./exports/translations.csv
+  $ i18n-ai export --delimiter ";"
+  $ i18n-ai export --metadata
+  $ i18n-ai export -c custom-config.json     # Use custom config
+    `
+  )
+  .action(async (options) => {
+    try {
+      const config = loadConfig(options.config);
+      await exportTranslationsToCSV(config, {
+        outputPath: options.output,
+        delimiter: options.delimiter,
+        includeMetadata: options.metadata,
+      });
+    } catch (error) {
+      console.error("Export failed:", error);
+      process.exit(1);
     }
   });
 
