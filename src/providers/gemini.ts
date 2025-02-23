@@ -51,8 +51,6 @@ export class GeminiProvider implements TranslationProvider {
         }
       );
 
-      console.log("Gemini response", response.data.candidates[0].content);
-
       // Extract the JSON response
       let translatedContent = response.data.candidates[0].content.parts[0].text;
 
