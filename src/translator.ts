@@ -8,6 +8,7 @@ import {
 import { createProvider } from "./providers";
 import { loadConfig, validateConfig } from "./config";
 import { flattenObject, unflattenObject } from "./utils/flatten";
+import { Spinner } from "./utils/spinner";
 
 interface ChunkResult {
   key: string;
@@ -224,6 +225,7 @@ async function translateFile(
   targetLang: string,
   config: TranslationConfig
 ): Promise<TranslationStats> {
+  const spinner = new Spinner();
   const stats: TranslationStats = {
     totalKeys: 0,
     newKeys: 0,
@@ -232,25 +234,31 @@ async function translateFile(
   };
 
   // Read and flatten source file
+  spinner.start("Reading source file...");
   const sourceContent = fs.readFileSync(sourceFile, "utf-8");
   const sourceData = JSON.parse(sourceContent);
   const flattenedSource = flattenObject(sourceData);
   stats.totalKeys = Object.keys(flattenedSource).length;
+  spinner.succeed();
 
   // Read existing translations if available
+  spinner.start("Reading existing translations...");
   let existingTranslations: Record<string, any> = {};
   try {
     if (fs.existsSync(targetFile)) {
       const existingContent = fs.readFileSync(targetFile, "utf-8");
       existingTranslations = flattenObject(JSON.parse(existingContent));
+      spinner.succeed();
     }
   } catch (error) {
+    spinner.fail();
     console.warn(
       `Warning: Could not read existing translations from ${targetFile}`
     );
   }
 
   // Identify keys that need translation
+  spinner.start("Analyzing translation needs...");
   const keysToTranslate: Record<string, string> = {};
   for (const [key, value] of Object.entries(flattenedSource)) {
     // Skip if key should be ignored
@@ -273,6 +281,7 @@ async function translateFile(
     }
     keysToTranslate[key] = value;
   }
+  spinner.succeed();
 
   if (Object.keys(keysToTranslate).length === 0) {
     console.log("No new keys to translate");
@@ -280,12 +289,14 @@ async function translateFile(
   }
 
   // Initialize provider
+  spinner.start("Initializing translation provider...");
   const provider = createProvider(
     config.provider,
     process.env[`${config.provider.toUpperCase()}_API_KEY`] || "",
     config,
     config.model
   );
+  spinner.succeed();
 
   const translatedChunks: Record<string, any> = {};
   const batchProcessor = new BatchProcessor({
@@ -295,13 +306,12 @@ async function translateFile(
   });
 
   if (config.translateAllAtOnce) {
+    spinner.start(
+      `Translating ${
+        Object.keys(keysToTranslate).length
+      } keys to ${targetLang} all at once...`
+    );
     try {
-      console.log(
-        `Translating ${
-          Object.keys(keysToTranslate).length
-        } keys to ${targetLang} all at once...`
-      );
-
       const entries = Object.entries(keysToTranslate);
       const formattedText = formatTranslationInput(entries);
       const translatedText = await provider.translate(
@@ -317,11 +327,14 @@ async function translateFile(
           translatedChunks[key] = value;
           stats.newKeys++;
         });
+        spinner.succeed();
       } catch (error) {
+        spinner.fail();
         console.error("Error parsing translation:", error);
         stats.errors++;
       }
     } catch (error) {
+      spinner.fail();
       console.error("Error translating:", error);
       stats.errors++;
     }
@@ -329,16 +342,16 @@ async function translateFile(
     // Translate in chunks
     const chunks = chunkObject(keysToTranslate, config.chunkSize || 10000);
 
-    console.log(
+    spinner.start(
       `Translating ${
         Object.keys(keysToTranslate).length
       } keys to ${targetLang}...`
     );
-    console.log(`Split into ${chunks.length} chunks`);
+    spinner.succeed(`Split into ${chunks.length} chunks`);
 
     if (config.provider === "anthropic") {
       // Use batch processing for Anthropic
-      console.log("Using batch processing for Anthropic");
+      spinner.start("Using batch processing for Anthropic");
       const results = await batchProcessor.processBatch(
         chunks,
         async (chunk) => {
@@ -366,24 +379,23 @@ async function translateFile(
               translatedChunks[key] = value;
               stats.newKeys++;
             });
+            spinner.succeed(`Batch ${index + 1}/${results.length} completed`);
           } catch (error) {
-            console.error(
-              `Error parsing translation for chunk ${index + 1}:`,
-              error
-            );
+            spinner.fail(`Error parsing translation for chunk ${index + 1}`);
+            console.error("Error details:", error);
             stats.errors++;
           }
         } else {
-          console.error(
-            `Failed to translate chunk ${index + 1}:`,
-            result.error
-          );
+          spinner.fail(`Failed to translate chunk ${index + 1}`);
+          console.error("Error details:", result.error);
           stats.errors++;
         }
       });
     } else {
       // Sequential processing for other providers
-      for (const chunk of chunks) {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        spinner.start(`Translating chunk ${i + 1}/${chunks.length}...`);
         try {
           const entries = chunk.map(
             (item) => [item.key, item.value] as [string, string]
@@ -401,7 +413,9 @@ async function translateFile(
             translatedChunks[key] = value;
             stats.newKeys++;
           });
+          spinner.succeed(`Chunk ${i + 1}/${chunks.length} completed`);
         } catch (error) {
+          spinner.fail(`Error in chunk ${i + 1}/${chunks.length}`);
           console.error("Error translating chunk:", error);
           stats.errors++;
         }
@@ -410,6 +424,7 @@ async function translateFile(
   }
 
   // Merge translations
+  spinner.start("Merging translations...");
   const mergedTranslations = {
     ...existingTranslations,
     ...translatedChunks,
@@ -432,7 +447,7 @@ async function translateFile(
   // Save the result
   const finalTranslations = unflattenObject(translatedData);
   fs.writeFileSync(targetFile, JSON.stringify(finalTranslations, null, 2));
-  console.log(`Translation saved to ${targetFile}`);
+  spinner.succeed(`Translation saved to ${targetFile}`);
 
   return stats;
 }
