@@ -5,7 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2024-03-21
+## [1.3.0] - 2025-02-23
+
+### Added
+
+- CSV import/export functionality
+  - New `import` command to update translations from CSV files
+  - New `export` command to export translations to CSV format
+  - Support for custom delimiters and headers
+  - Metadata export option (last modified date)
+  - Configuration options in `translator.config.json` for import/export settings
+  - Validation of CSV structure against configured languages
+  - Lightweight CSV parser implementation (no external dependencies)
+  - Programmatic API for import/export operations
+- Added spinner to the CLI
+
+### Enhanced
+
+- Documentation improvements
+  - Added CSV import/export usage examples
+  - Updated configuration documentation
+  - Added new CLI commands reference
+
+## [1.2.0] - 2025-02-21
 
 ### Enhanced
 
@@ -32,6 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Detailed progress tracking and statistics
 - Automatic retry on API failures
 
-[Unreleased]: https://github.com/yourusername/i18n-ai/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/yourusername/i18n-ai/compare/v1.0.0...v1.2.0
-[1.0.0]: https://github.com/yourusername/i18n-ai/releases/tag/v1.0.0
+[1.3.0]: https://github.com/dalisys/i18n-ai/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/dalisys/i18n-ai/compare/v1.0.0...v1.2.0
+[1.0.0]: https://github.com/dalisys/i18n-ai/releases/tag/v1.0.0

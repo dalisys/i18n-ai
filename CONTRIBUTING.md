@@ -4,7 +4,7 @@ First off, thank you for considering contributing to i18n-ai! It's people like y
 
 ## Code of Conduct
 
-By participating in this project, you are expected to uphold our Code of Conduct. Please report unacceptable behavior to [project maintainers].
+By participating in this project, you are expected to uphold our Code of Conduct. Please report unacceptable behavior to [@dalisys](https://github.com/dalisys).
 
 ## How Can I Contribute?
 
@@ -44,7 +44,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/i18n-ai.git
+   git clone https://github.com/dalisys/i18n-ai.git
    ```
 
 2. Install dependencies:

@@ -2,8 +2,13 @@
 
 [![npm version](https://badge.fury.io/js/i18n-ai.svg)](https://www.npmjs.com/package/i18n-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://img.shields.io/npm/dt/i18n-ai.svg)](https://www.npmjs.com/package/i18n-ai)
+[![GitHub stars](https://img.shields.io/github/stars/dalisys/i18n-ai.svg?style=social&label=Star)](https://github.com/dalisys/i18n-ai)
 
 An AI-powered translation tool for i18n JSON files. This package helps you automatically translate your internationalization files using AI language models while handling large files through intelligent chunking.
+Lightweight and fast.
+
+Support us by starring the repository! 🌟🌟🌟
 
 ## Table of Contents
 
@@ -21,6 +26,10 @@ An AI-powered translation tool for i18n JSON files. This package helps you autom
     - [Complete Configuration Example](#complete-configuration-example)
   - [Usage](#usage)
     - [CLI Commands](#cli-commands)
+    - [CSV Import/Export](#csv-importexport)
+      - [Importing Translations from CSV](#importing-translations-from-csv)
+      - [Exporting Translations to CSV](#exporting-translations-to-csv)
+    - [Other CLI Commands](#other-cli-commands)
     - [Programmatic Usage](#programmatic-usage)
   - [Configuration Options](#configuration-options)
     - [Overwrite Option](#overwrite-option)
@@ -51,6 +60,7 @@ An AI-powered translation tool for i18n JSON files. This package helps you autom
 - 🎨 Customizable translation tone and context
 - ⚡ Option to translate entire files at once
 - 📊 Export translations to CSV for review and analysis
+- 📝 Import translations from CSV
 
 ## Quick Start
 
@@ -251,21 +261,96 @@ Translate using configuration file:
 npx i18n-ai translate
 ```
 
-Export translations to CSV:
+### CSV Import/Export
+
+#### Importing Translations from CSV
+
+You can import translations from a CSV file using the `import` command:
 
 ```bash
-# Default export (creates translations-export.csv)
-npx i18n-ai export
+# Basic usage
+i18n-ai import -i translations.csv
 
-# Custom output path
-npx i18n-ai export --output ./exports/translations.csv
-
-# Use semicolon as delimiter
-npx i18n-ai export --delimiter ";"
-
-# Include metadata (last modified date)
-npx i18n-ai export --metadata
+# Custom options
+i18n-ai import -i ./data/translations.csv -d ";" --no-header --overwrite
 ```
+
+The CSV file should follow this structure:
+
+```csv
+key,en,es,fr
+welcome.title,Welcome,Bienvenido,Bienvenue
+welcome.subtitle,Get started,Empezar,Commencer
+```
+
+Import Options:
+
+- `-i, --input <path>`: Input CSV file path (required)
+- `-d, --delimiter <char>`: CSV delimiter (default: ',')
+- `--no-header`: Skip header row in CSV
+- `-o, --overwrite`: Overwrite existing translations
+- `-c, --config <path>`: Custom config file path
+
+You can also configure import settings in your `translator.config.json`:
+
+```json
+{
+  "import": {
+    "delimiter": ",",
+    "skipHeader": true,
+    "overwrite": false
+  }
+}
+```
+
+#### Exporting Translations to CSV
+
+Export your translations to CSV for review or backup:
+
+```bash
+# Basic usage (creates translations-export.csv)
+i18n-ai export
+
+# Custom options
+i18n-ai export --output ./exports/translations.csv --delimiter ";" --metadata
+```
+
+Export Options:
+
+- `-o, --output <path>`: Output file path (default: './translations-export.csv')
+- `-d, --delimiter <char>`: CSV delimiter (default: ',')
+- `-m, --metadata`: Include metadata columns (e.g., last modified date)
+- `-c, --config <path>`: Custom config file path
+
+Configure default export settings in your `translator.config.json`:
+
+```json
+{
+  "export": {
+    "outputPath": "./exports/translations.csv",
+    "delimiter": ";",
+    "includeMetadata": true
+  }
+}
+```
+
+The exported CSV will have this structure:
+
+```csv
+Key,en,de,fr,Last Modified
+common.welcome,Welcome,Willkommen,Bienvenue,2024-03-21T10:30:00.000Z
+common.login,Log in,Anmelden,Se connecter,2024-03-21T10:30:00.000Z
+errors.required,This field is required,Dieses Feld ist erforderlich,Ce champ est obligatoire,2024-03-21T10:30:00.000Z
+```
+
+This format makes it easy to:
+
+- Review translations across all languages
+- Import into spreadsheet software for analysis
+- Share with translators or stakeholders for review
+- Track changes through metadata
+
+### Other CLI Commands
 
 Use a custom config file:
 
@@ -291,10 +376,32 @@ List models for a specific provider:
 npx i18n-ai models --provider openai
 ```
 
+The models command will show detailed information about each model:
+
+```
+OPENAI Models:
+----------------------------------------
+- GPT-3.5 Turbo (default)
+  ID: gpt-3.5-turbo
+  Max Tokens: 4,096
+
+- GPT-4
+  ID: gpt-4
+  Max Tokens: 8,192
+
+- GPT-4 Turbo
+  ID: gpt-4-turbo-preview
+  Max Tokens: 128,000
+```
+
 ### Programmatic Usage
 
 ```typescript
-import { translateFiles, exportTranslationsToCSV } from "i18n-ai";
+import {
+  translateFiles,
+  exportTranslationsToCSV,
+  importTranslationsFromCSV,
+} from "i18n-ai";
 
 // Translation
 await translateFiles({
@@ -304,27 +411,19 @@ await translateFiles({
 
 // CSV Export
 await exportTranslationsToCSV(config, {
-  outputPath: "./exports/translations.csv", // optional, default: "./translations-export.csv"
-  delimiter: ",", // optional, default: ","
-  includeMetadata: false, // optional, default: false
+  outputPath: "./exports/translations.csv",
+  delimiter: ",",
+  includeMetadata: false,
+});
+
+// CSV Import
+await importTranslationsFromCSV(config, {
+  inputPath: "./imports/translations.csv",
+  delimiter: ",",
+  skipHeader: true,
+  overwrite: false,
 });
 ```
-
-The exported CSV will have the following structure:
-
-```csv
-Key,en,de,fr,Last Modified
-common.welcome,Welcome,Willkommen,Bienvenue,2024-03-21T10:30:00.000Z
-common.login,Log in,Anmelden,Se connecter,2024-03-21T10:30:00.000Z
-errors.required,This field is required,Dieses Feld ist erforderlich,Ce champ est obligatoire,2024-03-21T10:30:00.000Z
-```
-
-This format makes it easy to:
-
-- Review translations across all languages
-- Import into spreadsheet software for analysis
-- Share with translators or stakeholders for review
-- Track changes through metadata
 
 ## Configuration Options
 
