@@ -9,6 +9,7 @@ import { createProvider } from "./providers";
 import { loadConfig, validateConfig } from "./config";
 import { flattenObject, unflattenObject } from "./utils/flatten";
 import { Spinner } from "./utils/spinner";
+import { BatchProcessor } from "./utils/batch-processor";
 
 interface ChunkResult {
   key: string;
@@ -146,79 +147,6 @@ function parseTranslatedText(
   }
 }
 
-interface BatchConfig {
-  maxConcurrent: number;
-  delayBetweenBatches: number;
-  retryAttempts: number;
-}
-
-interface BatchResponse<T> {
-  success: boolean;
-  result?: T;
-  error?: Error;
-  retryCount?: number;
-}
-
-class BatchProcessor {
-  private config: BatchConfig;
-
-  constructor(config: Partial<BatchConfig> = {}) {
-    this.config = {
-      maxConcurrent: 3,
-      delayBetweenBatches: 1000,
-      retryAttempts: 3,
-      ...config,
-    };
-  }
-
-  private async delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  private async processWithRetry<T>(
-    processor: () => Promise<T>,
-    attempts: number = 0
-  ): Promise<BatchResponse<T>> {
-    try {
-      const result = await processor();
-      return { success: true, result };
-    } catch (error) {
-      if (attempts < this.config.retryAttempts) {
-        await this.delay(Math.pow(2, attempts) * 1000); // Exponential backoff
-        return this.processWithRetry(processor, attempts + 1);
-      }
-      return {
-        success: false,
-        error: error as Error,
-        retryCount: attempts,
-      };
-    }
-  }
-
-  async processBatch<T, I>(
-    items: I[],
-    processor: (item: I) => Promise<T>
-  ): Promise<BatchResponse<T>[]> {
-    const results: BatchResponse<T>[] = [];
-
-    for (let i = 0; i < items.length; i += this.config.maxConcurrent) {
-      const batch = items.slice(i, i + this.config.maxConcurrent);
-      const batchPromises = batch.map((item) =>
-        this.processWithRetry(() => processor(item))
-      );
-
-      const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults);
-
-      if (i + this.config.maxConcurrent < items.length) {
-        await this.delay(this.config.delayBetweenBatches);
-      }
-    }
-
-    return results;
-  }
-}
-
 async function translateFile(
   sourceFile: string,
   targetFile: string,
@@ -273,13 +201,13 @@ async function translateFile(
       }
       continue;
     }
-
-    if (!config.overwrite && existingTranslations[key]) {
+    // If key exists in existing translations and we're not overwriting
+    if (existingTranslations[key] && !config.overwrite) {
       stats.skippedKeys++;
       keysToTranslate[key] = existingTranslations[key];
-      continue;
+    } else {
+      keysToTranslate[key] = value;
     }
-    keysToTranslate[key] = value;
   }
   spinner.succeed();
 

@@ -7,10 +7,16 @@ export function flattenObject(
   for (const [key, value] of Object.entries(obj)) {
     const newKey = prefix ? `${prefix}.${key}` : key;
 
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      Object.assign(flattened, flattenObject(value, newKey));
+    if (value && typeof value === "object") {
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => {
+          flattened[`${newKey}.${index}`] = String(item);
+        });
+      } else {
+        Object.assign(flattened, flattenObject(value, newKey));
+      }
     } else {
-      flattened[newKey] = JSON.stringify(value);
+      flattened[newKey] = String(value);
     }
   }
 
@@ -25,17 +31,26 @@ export function unflattenObject(
   for (const [key, value] of Object.entries(obj)) {
     const parts = key.split(".");
     let current = result;
+    const lastIndex = parts.length - 1;
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      if (i === parts.length - 1) {
-        try {
-          current[part] = JSON.parse(value);
-        } catch {
-          current[part] = value;
-        }
+      const nextPart = i < lastIndex ? parts[i + 1] : null;
+
+      if (i === lastIndex) {
+        // Try to parse as number first for array indices
+        const numValue =
+          !isNaN(Number(value)) && String(Number(value)) === value
+            ? Number(value)
+            : value;
+        current[part] = numValue;
       } else {
-        current[part] = current[part] || {};
+        // If next part is a number, initialize as array
+        if (nextPart && !isNaN(Number(nextPart))) {
+          current[part] = current[part] || [];
+        } else {
+          current[part] = current[part] || {};
+        }
         current = current[part];
       }
     }
