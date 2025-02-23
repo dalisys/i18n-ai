@@ -15,5 +15,15 @@
   "overwrite": false,
   "description": "My app context",
   "tone": "formal",
-  "translateAllAtOnce": false
+  "translateAllAtOnce": false,
+  "export": {
+    "outputPath": "./translations-export.csv",
+    "delimiter": ",",
+    "includeMetadata": false
+  },
+  "import": {
+    "delimiter": ",",
+    "skipHeader": true,
+    "overwrite": false
+  }
 }
