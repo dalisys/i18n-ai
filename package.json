@@ -34,7 +34,9 @@
     "translation",
     "ai",
     "internationalization",
-    "localization"
+    "localization",
+    "i18n-ai",
+    "ai-translation"
   ],
   "author": "Mohamed-Ali Masmoudi",
   "url": "https://github.com/dalisys",
