@@ -15,7 +15,7 @@ export class AnthropicProvider implements TranslationProvider {
 
   constructor(
     apiKey: string,
-    model: AnthropicModel = "claude-3-5-sonnet-latest",
+    model: AnthropicModel = "claude-3-5-haiku-latest",
     config: TranslationConfig
   ) {
     this.apiKey = apiKey;

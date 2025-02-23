@@ -183,9 +183,9 @@ export function getModelInfo(model: string): ModelInfo | undefined {
 export function getDefaultModel(provider: SupportedProvider): ProviderModel {
   switch (provider) {
     case "openai":
-      return "gpt-4o";
+      return "gpt-4o-mini";
     case "anthropic":
-      return "claude-3-5-sonnet-latest";
+      return "claude-3-5-haiku-latest";
     case "gemini":
       return "gemini-2.0-flash";
     case "deepseek":
