@@ -4,15 +4,14 @@ import { Command } from "commander";
 import { translateFiles } from "./translator";
 import { exportTranslationsToCSV } from "./export";
 import { loadConfig } from "./config";
-import { SupportedProvider } from "./types";
 import {
   OPENAI_MODELS,
   ANTHROPIC_MODELS,
   GEMINI_MODELS,
   DEEPSEEK_MODELS,
   XAI_MODELS,
-  getDefaultModel,
 } from "./providers/models";
+import { importTranslationsFromCSV } from "./import";
 
 const program = new Command();
 
@@ -192,6 +191,44 @@ Examples:
       });
     } catch (error) {
       console.error("Export failed:", error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command("import")
+  .description("Import translations from a CSV file")
+  .option(
+    "-c, --config <path>",
+    "Path to config file (default: translator.config.json)"
+  )
+  .option("-i, --input <path>", "Input CSV file path")
+  .option("-d, --delimiter <char>", "Delimiter to use in CSV (default: ,)")
+  .option("--no-header", "Skip header row in CSV")
+  .option("-o, --overwrite", "Overwrite existing translations")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ i18n-ai import -i translations.csv              # Use default settings
+  $ i18n-ai import -i ./data/translations.csv       # Custom input path
+  $ i18n-ai import -i translations.csv -d ";"       # Custom delimiter
+  $ i18n-ai import -i translations.csv --no-header  # Skip header row
+  $ i18n-ai import -i translations.csv --overwrite  # Overwrite existing
+  $ i18n-ai import -c custom-config.json -i translations.csv
+    `
+  )
+  .action(async (options) => {
+    try {
+      const config = loadConfig(options.config);
+      await importTranslationsFromCSV(config, {
+        inputPath: options.input,
+        delimiter: options.delimiter,
+        skipHeader: options.header !== false,
+        overwrite: options.overwrite,
+      });
+    } catch (error) {
+      console.error("Import failed:", error);
       process.exit(1);
     }
   });

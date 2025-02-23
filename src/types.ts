@@ -83,6 +83,26 @@ export interface ExportConfig {
   includeMetadata?: boolean;
 }
 
+export interface ImportConfig {
+  /**
+   * Character to use as CSV delimiter
+   * @default ','
+   */
+  delimiter?: string;
+
+  /**
+   * Whether to skip the first row (header)
+   * @default true
+   */
+  skipHeader?: boolean;
+
+  /**
+   * Whether to overwrite existing translations
+   * @default false
+   */
+  overwrite?: boolean;
+}
+
 export interface TranslationConfig {
   source: LanguageFile;
   targets: LanguageFile[];
@@ -99,6 +119,10 @@ export interface TranslationConfig {
    * CSV export configuration
    */
   export?: ExportConfig;
+  /**
+   * CSV import configuration
+   */
+  import?: ImportConfig;
 }
 
 export interface TranslateFilesOptions {
