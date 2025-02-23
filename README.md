@@ -530,8 +530,8 @@ Example output:
 ```
 OPENAI Models:
 ----------------------------------------
-- GPT-3.5 Turbo (default)
-  ID: gpt-3.5-turbo
+- GPT-4o-mini (default)
+  ID: gpt-4o-mini
   Max Tokens: 4,096
 
 - GPT-4
@@ -548,8 +548,8 @@ ANTHROPIC Models:
   ID: claude-3-opus-20240229
   Max Tokens: 200,000
 
-- Claude 3 Sonnet (default)
-  ID: claude-3-sonnet-20240229
+- Claude 3 Haiku (default)
+  ID: claude-3-haiku-20240307
   Max Tokens: 200,000
 
 ...
