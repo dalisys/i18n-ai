@@ -1,0 +1,61 @@
+# Source and development files
+src/
+tests/
+src/__tests__/
+coverage/
+.github/
+.vscode/
+.idea/
+
+# Config files
+.eslintrc*
+.prettierrc*
+.editorconfig
+.gitignore
+.env
+.env.*
+jest.config.*
+tsconfig.json
+tsconfig.*.json
+.husky/
+
+# Documentation and examples
+docs/
+examples/
+localdocs/
+*.md
+!README.md
+!LICENSE.md
+!CHANGELOG.md
+
+# Development scripts
+scripts/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Build artifacts and cache
+dist/**/*.map
+*.tsbuildinfo
+.cache/
+.tmp/
+.temp/
+.DS_Store
+
+# Development dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# CI/CD
+.travis.yml
+.circleci/
+.gitlab-ci.yml
+azure-pipelines.yml
+.github/workflows/
+
+# Misc
+*.log
+.git/ 
