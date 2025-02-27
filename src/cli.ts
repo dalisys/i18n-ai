@@ -12,6 +12,7 @@ import {
   XAI_MODELS,
 } from "./providers/models";
 import { importTranslationsFromCSV } from "./import";
+import { getAvailableProviders } from "./providers";
 
 const program = new Command();
 
@@ -57,7 +58,15 @@ Configuration File (translator.config.json):
     "description": "My app context",   // Project context for better translations
     "tone": "formal",                 // Desired tone (formal/casual/technical)
     "translateAllAtOnce": false,      // Translate entire file at once
-    "overwrite": false                // Overwrite existing translations
+    "overwrite": false,               // Overwrite existing translations
+    "customProvider": {               // Custom translation API configuration
+      "url": "https://api.example.com/translate", // API endpoint
+      "method": "POST",               // HTTP method (default: POST)
+      "headers": {},                  // Custom HTTP headers
+      "body": {},                     // Request body template (supports placeholders)
+      "responsePath": "translation",  // Path to extract result from response
+      "apiKeyEnvVar": "CUSTOM_API_KEY" // Env var with API key
+    }
   }
 
 Environment Variables:
@@ -66,6 +75,7 @@ Environment Variables:
   GEMINI_API_KEY       - Google Gemini API key
   DEEPSEEK_API_KEY     - DeepSeek API key
   XAI_API_KEY          - XAI API key
+  [custom env var]     - For custom provider if configured
 
 Examples:
   $ i18n-ai translate                         # Use default config
@@ -102,25 +112,10 @@ Examples:
   )
   .action((options) => {
     const showModels = (name: string, models: any) => {
-      console.log(`\n${name} Models:`);
-      console.log("-".repeat(40));
-      Object.entries(models).forEach(([id, info]: [string, any]) => {
-        console.log(`${id}:`);
-        console.log(`  Name: ${info.name}`);
-        console.log(`  Max Tokens: ${info.maxTokens}`);
-        console.log(`  Output Tokens: ${info.outputTokens}`);
-        if (info.isDeprecated) {
-          console.log(
-            `  ⚠️  Deprecated${
-              info.deprecationDate ? ` since ${info.deprecationDate}` : ""
-            }`
-          );
-          if (info.replacedBy) {
-            console.log(`  👉 Use ${info.replacedBy} instead`);
-          }
-        }
-        console.log();
-      });
+      console.log(`\n${name.toUpperCase()}:`);
+      const modelList = Object.keys(models).join(" | ");
+      console.log(modelList);
+      console.log();
     };
 
     if (options.provider) {
@@ -166,10 +161,6 @@ program
     "Output path for CSV file (default: translations-export.csv)"
   )
   .option("-d, --delimiter <char>", "Delimiter to use in CSV (default: ,)")
-  .option(
-    "-m, --metadata",
-    "Include metadata columns (e.g., last modified date)"
-  )
   .addHelpText(
     "after",
     `
@@ -177,7 +168,6 @@ Examples:
   $ i18n-ai export                           # Use default settings
   $ i18n-ai export --output ./exports/translations.csv
   $ i18n-ai export --delimiter ";"
-  $ i18n-ai export --metadata
   $ i18n-ai export -c custom-config.json     # Use custom config
     `
   )
@@ -187,7 +177,6 @@ Examples:
       await exportTranslationsToCSV(config, {
         outputPath: options.output,
         delimiter: options.delimiter,
-        includeMetadata: options.metadata,
       });
     } catch (error) {
       console.error("Export failed:", error);
@@ -231,6 +220,19 @@ Examples:
       console.error("Import failed:", error);
       process.exit(1);
     }
+  });
+
+program
+  .command("providers")
+  .description("List all available translation providers")
+  .action(() => {
+    const providers = getAvailableProviders();
+
+    Object.entries(providers.models).forEach(([provider, models]) => {
+      console.log(`\n${provider.toUpperCase()}:`);
+      const modelList = Object.keys(models).join(" | ");
+      console.log(modelList);
+    });
   });
 
 program.parse();

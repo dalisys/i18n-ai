@@ -30,12 +30,6 @@ export const OPENAI_MODELS: Record<OpenAIModel, ModelInfo> = {
     maxTokens: 16385,
     outputTokens: 4096,
   },
-  "gpt-3.5-turbo-16k": {
-    id: "gpt-3.5-turbo-16k",
-    name: "GPT-3.5 Turbo 16K",
-    maxTokens: 16385,
-    outputTokens: 4096,
-  },
   "gpt-4o": {
     id: "gpt-4o",
     name: "GPT-4 Opus",
@@ -69,12 +63,6 @@ export const OPENAI_MODELS: Record<OpenAIModel, ModelInfo> = {
   "o3-mini": {
     id: "o3-mini",
     name: "Opus Three Mini",
-    maxTokens: 128000,
-    outputTokens: 16384,
-  },
-  "o1-preview": {
-    id: "o1-preview",
-    name: "Opus One Preview",
     maxTokens: 128000,
     outputTokens: 16384,
   },

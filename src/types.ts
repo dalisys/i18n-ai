@@ -4,20 +4,19 @@ export type SupportedProvider =
   | "anthropic"
   | "gemini"
   | "deepseek"
-  | "xai";
+  | "xai"
+  | "custom";
 
 export type OpenAIModel =
   | "gpt-4"
   | "gpt-4-turbo-preview"
   | "gpt-3.5-turbo"
-  | "gpt-3.5-turbo-16k"
   | "gpt-4o"
   | "chatgpt-4o-latest"
   | "gpt-4o-mini"
   | "o1"
   | "o1-mini"
-  | "o3-mini"
-  | "o1-preview";
+  | "o3-mini";
 
 export type AnthropicModel =
   | "claude-3-5-sonnet-latest"
@@ -75,12 +74,6 @@ export interface ExportConfig {
    * @default ','
    */
   delimiter?: string;
-
-  /**
-   * Include last modified date for each translation
-   * @default false
-   */
-  includeMetadata?: boolean;
 }
 
 export interface ImportConfig {
@@ -103,6 +96,39 @@ export interface ImportConfig {
   overwrite?: boolean;
 }
 
+export interface CustomProviderConfig {
+  /**
+   * The URL endpoint for the custom translation provider
+   */
+  url: string;
+
+  /**
+   * HTTP method to use (default: POST)
+   */
+  method?: "GET" | "POST";
+
+  /**
+   * Custom headers to send with the request (add your own auth headers here)
+   */
+  headers?: Record<string, string>;
+
+  /**
+   * Request body template as an object or JSON string
+   * Use "{{text}}" placeholder where the text to translate should be inserted
+   * Use "{{targetLang}}" placeholder where the target language code should be inserted
+   * Use "{{sourceLang}}" placeholder where the source language code should be inserted
+   * Example: {"text": "{{text}}", "to": "{{targetLang}}", "from": "{{sourceLang}}"}
+   */
+  body?: string | object;
+
+  /**
+   * JSON path to extract the translated text from the response
+   * Example: "data.translation" or "result"
+   * If not provided, the entire response body will be treated as the translation
+   */
+  responsePath?: string;
+}
+
 export interface TranslationConfig {
   source: LanguageFile;
   targets: LanguageFile[];
@@ -123,6 +149,11 @@ export interface TranslationConfig {
    * CSV import configuration
    */
   import?: ImportConfig;
+  /**
+   * Custom provider configuration
+   * When specified, this takes precedence over the regular provider
+   */
+  customProvider?: CustomProviderConfig;
 }
 
 export interface TranslateFilesOptions {

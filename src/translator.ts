@@ -226,6 +226,13 @@ async function translateFile(
   );
   spinner.succeed();
 
+  // Display which provider is being used
+  const isCustom = config.customProvider && config.customProvider.url;
+  const providerInfo = isCustom
+    ? `Custom provider (${config.customProvider!.url})`
+    : `${config.provider.toUpperCase()} (model: ${provider.model})`;
+  console.log(`Using translation provider: ${providerInfo}`);
+
   const translatedChunks: Record<string, any> = {};
   const batchProcessor = new BatchProcessor({
     maxConcurrent: 3,
@@ -390,6 +397,15 @@ export async function translateFiles(
     config.overwrite = options.overwrite;
   }
 
+  // Get provider info for summary
+  const isCustom = config.customProvider && config.customProvider.url;
+  const providerName = isCustom
+    ? "Custom provider"
+    : config.provider.toUpperCase();
+  const modelName = isCustom
+    ? config.customProvider!.url.split("/").pop() || "custom endpoint"
+    : config.model || "default model";
+
   const stats: TranslationStats = {
     totalKeys: 0,
     newKeys: 0,
@@ -413,8 +429,50 @@ export async function translateFiles(
   }
 
   console.log("\nTranslation Summary:");
+  console.log(`Provider: ${providerName}`);
+  console.log(`Model: ${modelName}`);
   console.log(`Total keys: ${stats.totalKeys}`);
   console.log(`New translations: ${stats.newKeys}`);
   console.log(`Skipped existing: ${stats.skippedKeys}`);
   console.log(`Errors: ${stats.errors}`);
+
+  // If there were errors with the custom provider, show log file paths in the summary
+  if (isCustom && stats.errors > 0) {
+    try {
+      // Import the CustomProvider class dynamically to avoid circular dependencies
+      const { CustomProvider } = require("./providers/custom");
+
+      if (
+        CustomProvider.logFilePaths &&
+        CustomProvider.logFilePaths.length > 0
+      ) {
+        console.log("\nError Logs:");
+
+        // Display unique log file paths
+        const uniqueErrorLogs = new Set<string>();
+        const uniqueResponseLogs = new Set<string>();
+
+        CustomProvider.logFilePaths.forEach(
+          (paths: { errorLogPath?: string; responseLogPath?: string }) => {
+            if (paths.errorLogPath) uniqueErrorLogs.add(paths.errorLogPath);
+            if (paths.responseLogPath)
+              uniqueResponseLogs.add(paths.responseLogPath);
+          }
+        );
+
+        if (uniqueErrorLogs.size > 0) {
+          console.log("\nError details:");
+          uniqueErrorLogs.forEach((path) => console.log(`- ${path}`));
+        }
+
+        if (uniqueResponseLogs.size > 0) {
+          console.log("\nResponse data:");
+          uniqueResponseLogs.forEach((path) => console.log(`- ${path}`));
+        }
+      }
+    } catch (error) {
+      // Silently ignore any issues with displaying log paths
+      console.debug("Failed to display log file paths:", error);
+    }
+  }
 }

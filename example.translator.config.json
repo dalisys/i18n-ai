@@ -9,21 +9,47 @@
       "code": "de"
     }
   ],
-  "provider": "gemini",
-  "chunkSize": 100,
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "chunkSize": 50,
   "concurrency": 3,
   "overwrite": false,
   "description": "My app context",
   "tone": "formal",
   "translateAllAtOnce": false,
+  "ignoreKeys": ["app.constants", "validation.regex"],
   "export": {
     "outputPath": "./translations-export.csv",
-    "delimiter": ",",
-    "includeMetadata": false
+    "delimiter": ","
   },
   "import": {
     "delimiter": ",",
     "skipHeader": true,
     "overwrite": false
+  },
+
+  "_comment": "Example of a gemini api as a custom provider configuration. Uncomment to use:",
+  "_customProvider": {
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=YOUR_API_KEY_HERE",
+    "method": "POST",
+    "body": {
+      "contents": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "text": "Translate the following JSON content to {{targetLang}}, Preserve all JSON structure and keys. Only translate the values. Return ONLY the translated text without any explanation or markdown in JSON format dont add the json markdown to your response. \n\n {{text}}"
+            }
+          ]
+        }
+      ],
+      "generationConfig": {
+        "temperature": 0.1,
+        "topK": 1,
+        "topP": 1,
+        "maxOutputTokens": 8192
+      }
+    },
+    "responsePath": "candidates[0].content.parts[0].text"
   }
 }

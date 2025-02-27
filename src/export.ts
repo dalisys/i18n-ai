@@ -15,12 +15,6 @@ interface ExportOptions {
    * @default ','
    */
   delimiter?: string;
-
-  /**
-   * Whether to include metadata columns (e.g., last modified date)
-   * @default false
-   */
-  includeMetadata?: boolean;
 }
 
 /**
@@ -28,7 +22,6 @@ interface ExportOptions {
  * CSV Structure:
  * - First column: Translation key (flattened with dots)
  * - Following columns: One column per language
- * - Optional metadata columns if includeMetadata is true
  */
 export async function exportTranslationsToCSV(
   config: TranslationConfig,
@@ -38,7 +31,6 @@ export async function exportTranslationsToCSV(
   const {
     outputPath = config.export?.outputPath || "./translations-export.csv",
     delimiter = config.export?.delimiter || ",",
-    includeMetadata = config.export?.includeMetadata || false,
   } = options;
 
   // Read source file
@@ -72,10 +64,6 @@ export async function exportTranslationsToCSV(
   const languages = [config.source.code, ...config.targets.map((t) => t.code)];
   const headerRow = ["Key", ...languages];
 
-  if (includeMetadata) {
-    headerRow.push("Last Modified");
-  }
-
   // Prepare CSV rows
   const rows = [headerRow.join(delimiter)];
 
@@ -92,11 +80,6 @@ export async function exportTranslationsToCSV(
           : value;
       }),
     ];
-
-    if (includeMetadata) {
-      const sourceStats = fs.statSync(config.source.path);
-      row.push(sourceStats.mtime.toISOString());
-    }
 
     rows.push(row.join(delimiter));
   }
