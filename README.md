@@ -84,20 +84,21 @@ npx i18n-ai import -i ./data/translations.csv
 
 ## Configuration Options
 
-| Option           | Description                                | Default          |
-| ---------------- | ------------------------------------------ | ---------------- |
-| `source.path`    | Path to source language file               | Required         |
-| `source.code`    | Source language code                       | Required         |
-| `targets`        | Array of target language configurations    | Required         |
-| `provider`       | AI provider (`openai`, `anthropic`, etc.)  | `openai`         |
-| `model`          | Model name for selected provider           | Provider default |
-| `chunkSize`      | Number of keys per translation chunk       | 50               |
-| `concurrency`    | Number of concurrent translation requests  | 3                |
-| `overwrite`      | Whether to overwrite existing translations | false            |
-| `description`    | Project context for better translations    | -                |
-| `tone`           | Desired tone (e.g., "formal", "casual")    | -                |
-| `ignoreKeys`     | Array of keys to ignore during translation | -                |
-| `customProvider` | Configuration for a custom translation API | -                |
+| Option           | Description                                   | Default          |
+| ---------------- | --------------------------------------------- | ---------------- |
+| `source.path`    | Path to source language file                  | Required         |
+| `source.code`    | Source language code                          | Required         |
+| `targets`        | Array of target language configurations       | Required         |
+| `provider`       | AI provider (`openai`, `anthropic`, etc.)     | `openai`         |
+| `model`          | Model name for selected provider              | Provider default |
+| `chunkSize`      | Number of keys per translation chunk          | 50               |
+| `concurrency`    | Number of concurrent translation requests     | 3                |
+| `overwrite`      | Whether to overwrite existing translations    | false            |
+| `description`    | Project context for better translations       | -                |
+| `tone`           | Desired tone (e.g., "formal", "casual")       | -                |
+| `ignoreKeys`     | Array of keys to ignore during translation    | -                |
+| `customProvider` | Configuration for a custom translation API    | -                |
+| `stopOnError`    | Whether to stop the process when error occurs | true             |
 
 ## Advanced Usage
 
