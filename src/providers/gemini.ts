@@ -30,7 +30,7 @@ export class GeminiProvider implements TranslationProvider {
       }
 
       prompt +=
-        "\nPreserve all JSON structure and keys. Only translate the values. Return ONLY the translated text without any explanation or markdown.\n\n";
+        "\nPreserve all JSON structure and keys. Only translate the values. DO NOT modify, translate, or convert numeric keys or values. Return ONLY the translated text without any explanation or markdown.\n\n";
       prompt += text;
 
       const response = await axios.post(

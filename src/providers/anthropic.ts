@@ -51,7 +51,7 @@ export class AnthropicProvider implements TranslationProvider {
       }
 
       systemPrompt +=
-        "\nPreserve all JSON structure and keys. Only translate the values. Return ONLY the translated text without any explanation or markdown. output in JSON format.";
+        "\nPreserve all JSON structure and keys. Only translate the values. DO NOT modify, translate, or convert numeric keys or values. Return ONLY the translated text without any explanation or markdown. output in JSON format.";
 
       console.log("Sending request to Anthropic");
 

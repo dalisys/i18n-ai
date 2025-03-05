@@ -30,7 +30,7 @@ export class OpenAIProvider implements TranslationProvider {
       }
 
       systemPrompt +=
-        "\nPreserve all JSON structure and keys. Only translate the values. Return ONLY the translated text without any explanation or markdown.";
+        "\nPreserve all JSON structure and keys. Only translate the values. DO NOT modify, translate, or convert numeric keys or values. Return ONLY the translated text without any explanation or markdown.";
 
       const response = await axios.post(
         "https://api.openai.com/v1/chat/completions",
