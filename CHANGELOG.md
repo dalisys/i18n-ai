@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-03-05
+
+### Fixed
+
+- Fixed `unflattenObject` utility to properly preserve objects with numeric keys
+- Enhanced test coverage for numeric key handling in object transformations
+
+### Changed
+
+- Enhanced error handling: now preserves and applies already translated chunks when errors occur
+- Detailed error reporting showing which chunk failed and improved error messages
+
+### Added
+
+- New `stopOnError` option to control whether the process stops on first error or continues with other languages
+
 ## [1.3.1] - 2025-02-24
 
 ### Added
@@ -61,6 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Detailed progress tracking and statistics
 - Automatic retry on API failures
 
+[1.4.1]: https://github.com/dalisys/i18n-ai/compare/v1.3.1...v1.4.1
+[1.3.1]: https://github.com/dalisys/i18n-ai/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/dalisys/i18n-ai/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dalisys/i18n-ai/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/dalisys/i18n-ai/releases/tag/v1.0.0
