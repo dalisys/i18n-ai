@@ -18,6 +18,7 @@
   "tone": "formal",
   "translateAllAtOnce": false,
   "ignoreKeys": ["app.constants", "validation.regex"],
+  "stopOnError": true,
   "export": {
     "outputPath": "./translations-export.csv",
     "delimiter": ","
