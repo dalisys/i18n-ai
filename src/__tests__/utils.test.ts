@@ -96,6 +96,46 @@ describe("Utility Functions", () => {
       expect(unflattenObject(input)).toEqual(expected);
     });
 
+    it("should unflatten an object with numeric keys", () => {
+      const input = {
+        "categories.1": "Category 1",
+        "categories.2": "Category 2",
+        "categories.10": "Category 10",
+        "categories.subcategories.1": "Subcategory 1",
+        "categories.subcategories.2": "Subcategory 2",
+        "other.0": "first",
+        "other.1": "second",
+        "other.2": "third",
+        "mixed.first": "First item",
+        "mixed.2": "Numeric key",
+        "mixed.third": "Third item",
+        "sequence.0": "Zero",
+        "sequence.1": "One",
+        "sequence.2": "Two",
+      };
+
+      const expected = {
+        categories: {
+          "1": "Category 1",
+          "2": "Category 2",
+          "10": "Category 10",
+          subcategories: {
+            "1": "Subcategory 1",
+            "2": "Subcategory 2",
+          },
+        },
+        other: ["first", "second", "third"],
+        mixed: {
+          first: "First item",
+          "2": "Numeric key",
+          third: "Third item",
+        },
+        sequence: ["Zero", "One", "Two"],
+      };
+
+      expect(unflattenObject(input)).toEqual(expected);
+    });
+
     it("should handle empty objects", () => {
       expect(unflattenObject({})).toEqual({});
     });
