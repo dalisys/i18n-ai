@@ -154,6 +154,11 @@ export interface TranslationConfig {
    * When specified, this takes precedence over the regular provider
    */
   customProvider?: CustomProviderConfig;
+  /**
+   * Whether to stop the entire translation process if an error occurs
+   * Default: true
+   */
+  stopOnError?: boolean;
 }
 
 export interface TranslateFilesOptions {
@@ -178,4 +183,8 @@ export interface TranslationStats {
   newKeys: number;
   skippedKeys: number;
   errors: number;
+  totalChunks: number;
+  processedChunks: number;
+  failedChunkIndex: number | null;
+  errorDetails: Error | null;
 }

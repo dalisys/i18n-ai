@@ -159,6 +159,10 @@ async function translateFile(
     newKeys: 0,
     skippedKeys: 0,
     errors: 0,
+    totalChunks: 0,
+    processedChunks: 0,
+    failedChunkIndex: null,
+    errorDetails: null,
   };
 
   // Read and flatten source file
@@ -267,15 +271,48 @@ async function translateFile(
         spinner.fail();
         console.error("Error parsing translation:", error);
         stats.errors++;
+        stats.errorDetails =
+          error instanceof Error ? error : new Error(String(error));
+
+        // Save any successfully translated chunks before exiting
+        if (Object.keys(translatedChunks).length > 0) {
+          await saveTranslations(
+            targetFile,
+            translatedChunks,
+            existingTranslations
+          );
+          spinner.succeed(
+            `Saved ${
+              Object.keys(translatedChunks).length
+            } successfully translated keys to ${targetFile}`
+          );
+        }
       }
     } catch (error) {
       spinner.fail();
       console.error("Error translating:", error);
       stats.errors++;
+      stats.errorDetails =
+        error instanceof Error ? error : new Error(String(error));
+
+      // Save any successfully translated chunks before exiting
+      if (Object.keys(translatedChunks).length > 0) {
+        await saveTranslations(
+          targetFile,
+          translatedChunks,
+          existingTranslations
+        );
+        spinner.succeed(
+          `Saved ${
+            Object.keys(translatedChunks).length
+          } successfully translated keys to ${targetFile}`
+        );
+      }
     }
   } else {
     // Translate in chunks
     const chunks = chunkObject(keysToTranslate, config.chunkSize || 10000);
+    stats.totalChunks = chunks.length;
 
     spinner.start(
       `Translating ${
@@ -287,50 +324,124 @@ async function translateFile(
     if (config.provider === "anthropic") {
       // Use batch processing for Anthropic
       spinner.start("Using batch processing for Anthropic");
-      const results = await batchProcessor.processBatch(
-        chunks,
-        async (chunk) => {
-          const entries = chunk.map(
-            (item) => [item.key, item.value] as [string, string]
-          );
-          const formattedText = formatTranslationInput(entries);
-          const translatedText = await provider.translate(
-            formattedText,
-            targetLang
-          );
+      let batchError = false;
 
-          const keys = chunk.map((item) => item.key);
-          return { translatedText, keys };
-        }
-      );
+      const maxConcurrent = batchProcessor.getMaxConcurrent();
+      for (
+        let batchStart = 0;
+        batchStart < chunks.length && !batchError;
+        batchStart += maxConcurrent
+      ) {
+        const batchEnd = Math.min(batchStart + maxConcurrent, chunks.length);
+        const currentBatch = chunks.slice(batchStart, batchEnd);
 
-      // Process results
-      results.forEach((result, index) => {
-        if (result.success && result.result) {
-          const { translatedText, keys } = result.result;
-          try {
-            const parsed = parseTranslatedText(translatedText, keys);
-            Object.entries(parsed).forEach(([key, value]) => {
-              translatedChunks[key] = value;
-              stats.newKeys++;
-            });
-            spinner.succeed(`Batch ${index + 1}/${results.length} completed`);
-          } catch (error) {
-            spinner.fail(`Error parsing translation for chunk ${index + 1}`);
-            console.error("Error details:", error);
-            stats.errors++;
+        spinner.start(
+          `Processing batch ${batchStart + 1}-${batchEnd} of ${
+            chunks.length
+          }...`
+        );
+
+        const results = await batchProcessor.processBatch(
+          currentBatch,
+          async (chunk) => {
+            const entries = chunk.map(
+              (item) => [item.key, item.value] as [string, string]
+            );
+            const formattedText = formatTranslationInput(entries);
+            const translatedText = await provider.translate(
+              formattedText,
+              targetLang
+            );
+
+            const keys = chunk.map((item) => item.key);
+            return { translatedText, keys };
           }
-        } else {
-          spinner.fail(`Failed to translate chunk ${index + 1}`);
-          console.error("Error details:", result.error);
-          stats.errors++;
+        );
+
+        // Process results
+        for (let i = 0; i < results.length; i++) {
+          const result = results[i];
+          const chunkIndex = batchStart + i;
+          stats.processedChunks++;
+
+          if (result.success && result.result) {
+            const { translatedText, keys } = result.result;
+            try {
+              const parsed = parseTranslatedText(translatedText, keys);
+              Object.entries(parsed).forEach(([key, value]) => {
+                translatedChunks[key] = value;
+                stats.newKeys++;
+              });
+              spinner.succeed(
+                `Chunk ${chunkIndex + 1}/${chunks.length} completed`
+              );
+            } catch (error) {
+              spinner.fail(
+                `Error parsing translation for chunk ${chunkIndex + 1}`
+              );
+              console.error("Error details:", error);
+              stats.errors++;
+              stats.failedChunkIndex = chunkIndex + 1;
+              stats.errorDetails =
+                error instanceof Error ? error : new Error(String(error));
+              batchError = true;
+              break;
+            }
+          } else {
+            spinner.fail(`Failed to translate chunk ${chunkIndex + 1}`);
+            console.error("Error details:", result.error);
+            stats.errors++;
+            stats.failedChunkIndex = chunkIndex + 1;
+            stats.errorDetails = result.error || null;
+            batchError = true;
+            break;
+          }
         }
-      });
+
+        // If we encountered an error in this batch, save progress and stop
+        if (batchError) {
+          spinner.start(
+            `Translation stopped at chunk ${stats.failedChunkIndex} due to an error`
+          );
+          spinner.stop();
+          break;
+        }
+
+        // After each batch, delay before the next one
+        if (batchStart + batchEnd < chunks.length) {
+          spinner.start(`Waiting before next batch...`);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Save progress if we have any successful translations
+      if (Object.keys(translatedChunks).length > 0) {
+        await saveTranslations(
+          targetFile,
+          translatedChunks,
+          existingTranslations
+        );
+        spinner.succeed(
+          `Saved ${
+            Object.keys(translatedChunks).length
+          } successfully translated keys to ${targetFile}`
+        );
+      }
+
+      // Check if all chunks are processed and we should stop
+      if (stats.totalKeys > 0 && stats.processedChunks === stats.totalChunks) {
+        spinner.start(`All translations complete`);
+        spinner.stop();
+      }
     } else {
       // Sequential processing for other providers
-      for (let i = 0; i < chunks.length; i++) {
+      let chunkError = false;
+
+      for (let i = 0; i < chunks.length && !chunkError; i++) {
         const chunk = chunks[i];
         spinner.start(`Translating chunk ${i + 1}/${chunks.length}...`);
+        stats.processedChunks++;
+
         try {
           const entries = chunk.map(
             (item) => [item.key, item.value] as [string, string]
@@ -349,17 +460,96 @@ async function translateFile(
             stats.newKeys++;
           });
           spinner.succeed(`Chunk ${i + 1}/${chunks.length} completed`);
+
+          // Always save progress after each chunk is processed
+          await saveTranslations(
+            targetFile,
+            translatedChunks,
+            existingTranslations
+          );
+          spinner.succeed(
+            `Progress saved (${
+              Object.keys(translatedChunks).length
+            } keys so far)`
+          );
         } catch (error) {
           spinner.fail(`Error in chunk ${i + 1}/${chunks.length}`);
           console.error("Error translating chunk:", error);
           stats.errors++;
+          stats.failedChunkIndex = i + 1;
+          stats.errorDetails =
+            error instanceof Error ? error : new Error(String(error));
+          chunkError = true;
+
+          // Save progress if we have any successful translations
+          if (Object.keys(translatedChunks).length > 0) {
+            await saveTranslations(
+              targetFile,
+              translatedChunks,
+              existingTranslations
+            );
+            spinner.succeed(
+              `Saved ${
+                Object.keys(translatedChunks).length
+              } successfully translated keys to ${targetFile}`
+            );
+          }
+
+          break;
         }
+      }
+
+      // If no error occurred and we haven't already saved progress (in case of an error),
+      // save translations now
+      if (!chunkError && Object.keys(translatedChunks).length > 0) {
+        await saveTranslations(
+          targetFile,
+          translatedChunks,
+          existingTranslations
+        );
+        spinner.succeed(`Translations saved to ${targetFile}`);
       }
     }
   }
 
-  // Merge translations
-  spinner.start("Merging translations...");
+  // If there's an error, don't attempt to save the translations again because we already did it above
+  if (stats.errors === 0) {
+    // Save any translations that haven't been saved yet
+    if (Object.keys(translatedChunks).length > 0) {
+      await saveTranslations(
+        targetFile,
+        translatedChunks,
+        existingTranslations
+      );
+      spinner.succeed(`Translation saved to ${targetFile}`);
+    }
+  } else {
+    // Display error information
+    if (stats.failedChunkIndex !== null) {
+      console.error(
+        `\nTranslation process stopped at chunk ${stats.failedChunkIndex}/${stats.totalChunks}`
+      );
+    }
+    if (stats.errorDetails) {
+      console.error(`Error details: ${stats.errorDetails.message}`);
+    }
+    console.info(
+      `\nPartial translations were saved. Successfully translated ${
+        stats.processedChunks - 1
+      } of ${stats.totalChunks} chunks.`
+    );
+  }
+
+  return stats;
+}
+
+// Helper function to save translations
+async function saveTranslations(
+  targetFile: string,
+  translatedChunks: Record<string, any>,
+  existingTranslations: Record<string, any>
+): Promise<void> {
+  // Always save progress on errors (this is now the default behavior)
   const mergedTranslations = {
     ...existingTranslations,
     ...translatedChunks,
@@ -379,12 +569,15 @@ async function translateFile(
     }
   }
 
+  // Ensure the directory exists
+  const targetDir = path.dirname(targetFile);
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
   // Save the result
   const finalTranslations = unflattenObject(translatedData);
   fs.writeFileSync(targetFile, JSON.stringify(finalTranslations, null, 2));
-  spinner.succeed(`Translation saved to ${targetFile}`);
-
-  return stats;
 }
 
 export async function translateFiles(
@@ -411,21 +604,49 @@ export async function translateFiles(
     newKeys: 0,
     skippedKeys: 0,
     errors: 0,
+    totalChunks: 0,
+    processedChunks: 0,
+    failedChunkIndex: null,
+    errorDetails: null,
   };
+
+  let stopOnFirstError = config.stopOnError !== false; // Default to true if not specified
+  let hasErrors = false;
 
   for (const target of config.targets) {
     console.log(`\nProcessing target language: ${target.code}`);
-    const targetStats = await translateFile(
-      config.source.path,
-      target.path,
-      target.code,
-      config
-    );
+    try {
+      const targetStats = await translateFile(
+        config.source.path,
+        target.path,
+        target.code,
+        config
+      );
 
-    stats.totalKeys += targetStats.totalKeys;
-    stats.newKeys += targetStats.newKeys;
-    stats.skippedKeys += targetStats.skippedKeys;
-    stats.errors += targetStats.errors;
+      stats.totalKeys += targetStats.totalKeys;
+      stats.newKeys += targetStats.newKeys;
+      stats.skippedKeys += targetStats.skippedKeys;
+      stats.errors += targetStats.errors;
+      stats.totalChunks += targetStats.totalChunks;
+      stats.processedChunks += targetStats.processedChunks;
+
+      if (targetStats.errors > 0) {
+        hasErrors = true;
+        if (stopOnFirstError) {
+          console.log(
+            `\nStopping translation process due to errors in ${target.code}`
+          );
+          break;
+        }
+      }
+    } catch (error) {
+      console.error(`\nUnexpected error processing ${target.code}:`, error);
+      stats.errors++;
+      hasErrors = true;
+      if (stopOnFirstError) {
+        break;
+      }
+    }
   }
 
   console.log("\nTranslation Summary:");
@@ -434,7 +655,17 @@ export async function translateFiles(
   console.log(`Total keys: ${stats.totalKeys}`);
   console.log(`New translations: ${stats.newKeys}`);
   console.log(`Skipped existing: ${stats.skippedKeys}`);
+  console.log(
+    `Chunks processed: ${stats.processedChunks}/${stats.totalChunks}`
+  );
   console.log(`Errors: ${stats.errors}`);
+
+  if (hasErrors) {
+    console.log("\nNote: Some translations were not completed due to errors.");
+    console.log(
+      "The successfully translated chunks were saved to preserve progress."
+    );
+  }
 
   // If there were errors with the custom provider, show log file paths in the summary
   if (isCustom && stats.errors > 0) {

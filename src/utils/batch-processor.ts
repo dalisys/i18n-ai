@@ -23,6 +23,19 @@ export class BatchProcessor {
     };
   }
 
+  // Public accessors for config properties
+  public getMaxConcurrent(): number {
+    return this.config.maxConcurrent;
+  }
+
+  public getDelayBetweenBatches(): number {
+    return this.config.delayBetweenBatches;
+  }
+
+  public getRetryAttempts(): number {
+    return this.config.retryAttempts;
+  }
+
   private async delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
